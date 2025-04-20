@@ -1,0 +1,18 @@
+body {
+  background-color: #121212;
+  color: #f0f0f0;
+}
+
+a {
+  color: #90caf9;
+}
+
+table {
+  background-color: #1e1e1e;
+  border: 1px solid #333;
+}
+
+th, td {
+  color: #f0f0f0;
+  border-color: #444;
+}
