@@ -5,8 +5,10 @@ import com.SuchoMIndMap.MaindTreeUser.Config.TwilioConfig;
 import com.SuchoMIndMap.MaindTreeUser.model.Usuaria;
 import com.SuchoMIndMap.MaindTreeUser.model.VerifyUser;
 import com.SuchoMIndMap.MaindTreeUser.repo.UserRepo;
+import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +28,11 @@ public class TwilioService {
     UserRepo userRepo;
     Map<String,String> otpMap=new HashMap<>();
     private BCryptPasswordEncoder encoder= new BCryptPasswordEncoder(12);
+    @PostConstruct
+    public void initTwilio() {
+        Twilio.init(twilioConfig.getAccountSid(), twilioConfig.getAuthToken());
+        System.out.println("✅ Twilio Initialized Successfully");
+    }
 
     private String generateOTP() {
         return new DecimalFormat("000000")
@@ -70,13 +77,24 @@ public class TwilioService {
     }
     public ResponseEntity<Map<String, String>> resetPass(VerifyUser verifyUser) {
         Map<String,String> response=new HashMap<>();
+        StringBuilder s = new StringBuilder();
+        int i=0;
         try {
+
             if (otpMap.get(verifyUser.getPhNo()).equals("verified")){
                 otpMap.remove(verifyUser.getPhNo());
                 Usuaria user=userRepo.findByphNo(verifyUser.getPhNo());
-                user.setPass(encoder.encode(verifyUser.getOtp()));
+                for(i=0;i<user.getPhNo().length()&&
+                        i<user.getName().length()&&
+                        i<verifyUser.getOtp().length();i++){
+                    char c= (char) (user.getPhNo().charAt(i)+user.getName().charAt(i)+verifyUser.getOtp().charAt(i));
+                    s.append(c);
+                }
+                if(i<user.getPass().length()) s.append(verifyUser.getOtp().substring(i+1,verifyUser.getOtp().length()));
+                user.setPass(encoder.encode(s.toString()));
                 userRepo.save(user);
                 response.put("Message","Password Changed Successfully");
+                otpMap.remove(verifyUser.getPhNo());
                 return new ResponseEntity<>(response,HttpStatus.OK);
             }
             else{

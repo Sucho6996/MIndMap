@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 @NoArgsConstructor
 public class VerifyUser {
     private String phNo;
+    private String otp;
 
     public String getPhNo() {
         return phNo;
@@ -28,5 +29,5 @@ public class VerifyUser {
         this.otp = otp;
     }
 
-    private String otp;
+
 }
