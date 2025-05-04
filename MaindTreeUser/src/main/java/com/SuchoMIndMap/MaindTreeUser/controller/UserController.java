@@ -1,13 +1,12 @@
 package com.SuchoMIndMap.MaindTreeUser.controller;
 
+import com.SuchoMIndMap.MaindTreeUser.model.Content;
+import com.SuchoMIndMap.MaindTreeUser.model.Topic;
 import com.SuchoMIndMap.MaindTreeUser.model.Usuaria;
 import com.SuchoMIndMap.MaindTreeUser.model.VerifyUser;
-import com.SuchoMIndMap.MaindTreeUser.service.JwtService;
-import com.SuchoMIndMap.MaindTreeUser.service.MyUserDetailsService;
-import com.SuchoMIndMap.MaindTreeUser.service.TwilioService;
-import com.SuchoMIndMap.MaindTreeUser.service.UserService;
+import com.SuchoMIndMap.MaindTreeUser.repo.UserRepo;
+import com.SuchoMIndMap.MaindTreeUser.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,8 +14,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -32,6 +35,10 @@ public class UserController {
     MyUserDetailsService myUserDetailsService;
     @Autowired
     AuthenticationManager authenticationManager;
+    @Autowired
+    MyEncoding myEncoding;
+    @Autowired
+    UserRepo repo;
 
     @PostMapping("/signup")
     public ResponseEntity<Map<String,String>> signUp(@RequestBody Usuaria user){
@@ -40,19 +47,15 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<Map<String,String>> logIn(@RequestBody Usuaria user){
         Map<String,String> response=new HashMap<>();
-        StringBuilder s = new StringBuilder();
-        int i=0;
         try {
-            for(i=0;i<user.getPhNo().length()&&
-                    i<user.getName().length()&&
-                    i<user.getPass().length();i++){
-                char c= (char) (user.getPhNo().charAt(i)+user.getName().charAt(i)+user.getPass().charAt(i));
-                s.append(c);
-            }
-            if(i<user.getPass().length()) s.append(user.getPass().substring(i+1,user.getPass().length()));
+            String s=myEncoding.encode(user.getName(), user.getPhNo(), user.getPass());
             Authentication auth= authenticationManager.
-                    authenticate(new UsernamePasswordAuthenticationToken(user.getPhNo(),s.toString()));
+                    authenticate(new UsernamePasswordAuthenticationToken(user.getPhNo(),s));
             if(auth.isAuthenticated()){
+                Usuaria u=repo.findByphNo(user.getPhNo());
+                u.setLastLoginTime(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                //userService.addUser(user);
+                repo.save(u);
                 response.put("message", jwtService.generateToken(user.getPhNo()));
                 return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
             }
@@ -109,6 +112,44 @@ public class UserController {
     @PutMapping("/resetPassword")
     public ResponseEntity<Map<String,String>> resetPassword(@RequestBody VerifyUser verifyUser){
         return twilioService.resetPass(verifyUser);
+    }
+
+    // From here on all the mapping are for accessing MindTreeService
+    @PostMapping("/add-topic")
+    public ResponseEntity<Map<String,String>> addTopic
+    (@RequestHeader("Authorization") String authHeader,@RequestBody Topic topic){
+        String token=authHeader.substring(7);
+        return userService.addTopic(token,topic);
+    }
+    @GetMapping("/get-topics")
+    public ResponseEntity<List<Topic>> getTopic(@RequestHeader("Authorization") String authHeader){
+        String token=authHeader.substring(7);
+        return userService.getTopic(token);
+    }
+    @PostMapping("/add-content")
+    public ResponseEntity<Map<String,String>> addContent
+            (@RequestParam("topicId") Long topicId,
+             @RequestParam(value = "parentId",required = false) Long parentId,
+             @RequestBody Content content){
+        return userService.addContent(topicId,parentId,content);
+    }
+    @GetMapping("get-contents/{topicId}")
+    public ResponseEntity<List<Content>> getContent(@PathVariable Long topicId){
+        return userService.getContent(topicId);
+    }
+    @PutMapping("/isCompleted")
+    public ResponseEntity<Map<String,String>> setAsCompleted
+            (@RequestParam("topicId") long topicId,@RequestParam("contentId") long contentId){
+        return userService.isComplete(topicId,contentId);
+    }
+    @DeleteMapping("/delete-content")
+    public ResponseEntity<Map<String,String>> deleteContent
+            (@RequestParam("topicId") long topicId,@RequestParam("contentId") long contentId){
+        return userService.deleteContent(topicId,contentId);
+    }
+    @DeleteMapping("/delete-topic")
+    public ResponseEntity<Map<String,String>> deleteTopic(@RequestParam long topicId){
+        return userService.deleteTopic(topicId);
     }
 
 }

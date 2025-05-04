@@ -26,6 +26,8 @@ public class TwilioService {
     TwilioConfig twilioConfig;
     @Autowired
     UserRepo userRepo;
+    @Autowired
+    MyEncoding myEncoding;
     Map<String,String> otpMap=new HashMap<>();
     private BCryptPasswordEncoder encoder= new BCryptPasswordEncoder(12);
     @PostConstruct
@@ -77,21 +79,13 @@ public class TwilioService {
     }
     public ResponseEntity<Map<String, String>> resetPass(VerifyUser verifyUser) {
         Map<String,String> response=new HashMap<>();
-        StringBuilder s = new StringBuilder();
-        int i=0;
         try {
 
             if (otpMap.get(verifyUser.getPhNo()).equals("verified")){
                 otpMap.remove(verifyUser.getPhNo());
                 Usuaria user=userRepo.findByphNo(verifyUser.getPhNo());
-                for(i=0;i<user.getPhNo().length()&&
-                        i<user.getName().length()&&
-                        i<verifyUser.getOtp().length();i++){
-                    char c= (char) (user.getPhNo().charAt(i)+user.getName().charAt(i)+verifyUser.getOtp().charAt(i));
-                    s.append(c);
-                }
-                if(i<user.getPass().length()) s.append(verifyUser.getOtp().substring(i+1,verifyUser.getOtp().length()));
-                user.setPass(encoder.encode(s.toString()));
+                String s=myEncoding.encode(user.getName(), user.getPhNo(), verifyUser.getOtp());
+                user.setPass(encoder.encode(s));
                 userRepo.save(user);
                 response.put("Message","Password Changed Successfully");
                 otpMap.remove(verifyUser.getPhNo());
