@@ -29,7 +29,6 @@ Authorization: Bearer <your-jwt-token>
     "pass": "string"
 }
 ```
-- **Response**: JWT token for authentication
 
 #### Login 🔑
 - **Endpoint**: `/login`
