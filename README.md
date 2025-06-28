@@ -110,7 +110,7 @@ Authorization: Bearer <your-jwt-token>
 - **Request Body**:
 ```json
 {
-    "name": "string"
+    "topicName": "string"
 }
 ```
 - **Response**: Success message
@@ -132,7 +132,7 @@ Authorization: Bearer <your-jwt-token>
 - **Request Body**:
 ```json
 {
-    "name": "string",
+    "contentName": "string",
     "description": "string"
 }
 ```
